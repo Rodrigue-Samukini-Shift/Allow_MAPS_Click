@@ -1,1 +1,53 @@
-f
+name: GitHub Actions Demo
+run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
+on: [push]
+env:
+  APP_NAME_VERACODE: test-veracode-CI
+  DEV_LANGUAGE_VERACODE: PYTHON
+  FILES_TO_SCAN_VERACODE: "*.py"
+  PACKAGE_FILE_NAME: scan-files.zip
+jobs:
+  Explore-GitHub-Actions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        
+      - name: zip files
+        run: zip scan-files.zip *
+        
+      - name: integrate security shared library
+        run: |
+            curl --create-dirs -o secu-setup.sh https://${{ secrets.ACTION_GITHUB_TOKEN }}@raw.githubusercontent.com/shift-technology/security-shared-library/main/setup.sh >> security.log
+            chmod +x secu-setup.sh
+            ./secu-setup.sh ${{ secrets.VERACODE_API_ID }} ${{ secrets.VERACODE_API_SECRET_KEY }} ${{ secrets.ACTION_GITHUB_TOKEN }} $DEV_LANGUAGE_VERACODE $FILES_TO_SCAN_VERACODE
+      - name: Veracode Create Application sandbox
+        if: ${{ github.event_name == 'push' && (github.ref_name == 'main' || startsWith(github.ref_name, 'release')) }}
+        uses: ./.github/actions/sandbox
+        with:
+          application: $APP_NAME_VERACODE
+          sandbox: ${{ github.ref_name }}
+          type: create
+
+      - name: pipeline-scan action step
+        if: ${{ github.ref_name != 'main' }}
+        uses: ./.github/actions/pipelinescan
+        with:
+          v_api_id: ${{ secrets.VERACODE_API_ID}}
+          v_api_key: ${{ secrets.VERACODE_API_SECRET_KEY }}
+          package_to_scan: scan-files.zip
+
+      - name: Veracode SAST upload scan to UI
+        if: ${{ github.event_name == 'push' && (github.ref_name == 'main' || startsWith(github.ref_name, 'release')) }}
+        uses: ./.github/actions/uploadscan
+        with:
+          v_api_id: ${{ secrets.VERACODE_API_ID}}
+          v_api_key: ${{ secrets.VERACODE_API_SECRET_KEY }}
+          application: $APP_NAME_VERACODE
+          package_to_scan: scan-files.zip
+
+      - name: Veracode SCA scan
+        uses: ./.github/actions/compositionscan
+        with:
+          github_api_token: ${{ secrets.ACTION_GITHUB_TOKEN }}
+          srcclr_token: ${{ secrets.SRCCLR_API_TOKEN }}
