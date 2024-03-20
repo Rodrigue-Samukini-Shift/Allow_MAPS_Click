@@ -19,7 +19,7 @@ jobs:
             chmod +x secu-setup.sh
             ./secu-setup.sh ${{ secrets.VERACODE_API_ID }} ${{ secrets.VERACODE_API_SECRET_KEY }} ${{ secrets.ACTION_GITHUB_TOKEN }} $DEV_LANGUAGE_VERACODE $FILES_TO_SCAN_VERACODE
       - name: zip files
-        run: zip scan-files.zip .
+        run: zip scan-files.zip *
       - name: Veracode Create Application sandbox
         if: ${{ github.event_name == 'push' && (github.ref_name == 'main' || startsWith(github.ref_name, 'release')) }}
         uses: ./.github/actions/sandbox
